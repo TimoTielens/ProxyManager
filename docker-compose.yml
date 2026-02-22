@@ -1,0 +1,68 @@
+services:
+
+  # ─────────────────────────────────────────
+  # Nginx Proxy Manager Plus
+  # ─────────────────────────────────────────
+  npm:
+    image: zoeyvid/npmplus:latest
+    container_name: npmplus
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81"   # Admin UI
+    volumes:
+      - ./npmplus/data:/data
+      - ./npmplus/letsencrypt:/etc/letsencrypt
+    environment:
+      - TZ=${TZ:-Europe/Amsterdam}
+      - DB_SQLITE_FILE=/data/database.sqlite
+      # CrowdSec bouncer key — filled in by deploy.sh after bouncer is registered
+      - CROWDSEC_BOUNCER_KEY=${CROWDSEC_BOUNCER_KEY:-}
+      - CROWDSEC_API=http://crowdsec:8080
+    depends_on:
+      - crowdsec
+    networks:
+      - proxy
+
+  # ─────────────────────────────────────────
+  # CrowdSec Security Engine
+  # ─────────────────────────────────────────
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Europe/Amsterdam}
+      - GID=1000
+      - COLLECTIONS=crowdsecurity/nginx
+    volumes:
+      - ./npmplus/crowdsec/data:/var/lib/crowdsec/data
+      - ./npmplus/crowdsec/config:/etc/crowdsec
+      - ./npmplus/data:/var/log/npm:ro      # CrowdSec reads NPM logs
+      - /var/log:/var/log/host:ro     # Optional: host log access
+    networks:
+      - proxy
+
+  # ─────────────────────────────────────────
+  # CrowdSec Bouncer — nginx-based HTTP bouncer
+  # ─────────────────────────────────────────
+  cs-bouncer:
+    image: crowdsecurity/cs-nginx-bouncer:latest
+    container_name: cs-bouncer
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Europe/Amsterdam}
+      - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_KEY:-}
+      - CROWDSEC_AGENT_HOST=crowdsec:8080
+    volumes:
+      - ./npmplus/crowdsec/bouncer/config:/etc/nginx
+    depends_on:
+      - crowdsec
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: proxy
+    driver: bridge
