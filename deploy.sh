@@ -68,13 +68,6 @@ log "Installing ping (iputils)..."
 tdnf install -y iputils
 ok "ping installed: $(ping -V 2>&1 | head -1)"
 
-# ── 1.6 Install QEMU Guest Agent ─────────────────────────────────────────────
-log "Installing QEMU Guest Agent..."
-tdnf install -y qemu-guest-agent
-systemctl is-enabled qemu-guest-agent >/dev/null 2>&1 || systemctl enable qemu-guest-agent
-systemctl is-active  qemu-guest-agent >/dev/null 2>&1 || systemctl start  qemu-guest-agent
-ok "QEMU Guest Agent installed and running."
-
 # =============================================================================
 # SECTION 2 — NPMplus + CrowdSec Stack Deployment
 # =============================================================================

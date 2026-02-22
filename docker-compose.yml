@@ -20,6 +20,7 @@ services:
       # CrowdSec bouncer key — filled in by deploy.sh after bouncer is registered
       - CROWDSEC_BOUNCER_KEY=${CROWDSEC_BOUNCER_KEY:-}
       - CROWDSEC_API=http://crowdsec:8080
+      - GOA=true
     depends_on:
       - crowdsec
     networks:
@@ -61,6 +62,22 @@ services:
       - crowdsec
     networks:
       - proxy
+
+  # ─────────────────────────────────────────
+  # GeoIP Update Service
+  # ─────────────────────────────────────────
+  geoipupdate:
+    image: ghcr.io/maxmind/geoipupdate:latest
+    container_name: npmplus-geoipupdate
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Europe/Amsterdam}
+      - "GEOIPUPDATE_EDITION_IDS=GeoLite2-Country GeoLite2-City GeoLite2-ASN"
+      - GEOIPUPDATE_ACCOUNT_ID=${GEO_UPDATE_ID:-}
+      - GEOIPUPDATE_LICENSE_KEY=${GEO_UPDATE_KEY:-}
+      - GEOIPUPDATE_FREQUENCY=24
+    volumes:
+      - "./npmplus/crowdsec/data/goaccess/geoip:/usr/share/GeoIP"
 
 networks:
   proxy:
